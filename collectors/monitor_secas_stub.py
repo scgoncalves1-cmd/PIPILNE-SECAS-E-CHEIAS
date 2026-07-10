@@ -93,12 +93,28 @@ def _normalizar_um_arquivo(caminho_arquivo: str) -> pd.DataFrame:
             valor = row.get(categoria)
             if pd.isna(valor):
                 continue
+
+            # Sanidade: essas colunas são sempre um percentual de área (0 a 100).
+            # Alguns arquivos baixados do site vêm com célula corrompida/mal formatada
+            # (ex: número gigante tipo notação científica) - descarta e avisa em vez
+            # de deixar esse lixo entrar no painel.
+            try:
+                valor_num = float(valor)
+            except (TypeError, ValueError):
+                print(f"[AVISO] Monitor de Secas: valor não numérico em "
+                      f"{os.path.basename(caminho_arquivo)} ({categoria}, {row.get('mapas')}): {valor!r} — ignorado.")
+                continue
+            if not (0 <= valor_num <= 100):
+                print(f"[AVISO] Monitor de Secas: valor fora do intervalo esperado (0-100) em "
+                      f"{os.path.basename(caminho_arquivo)} ({categoria}, {row.get('mapas')}): {valor_num} — ignorado.")
+                continue
+
             registros.append({
                 "fonte": "MonitorDeSecas-ANA",
                 "estacao_codigo": uf,
-                "data": data_mes,
+                "data": data_mes.isoformat() if data_mes else None,
                 "variavel": f"seca_{categoria}",
-                "valor": valor,
+                "valor": valor_num,
                 "unidade": "pct_area",
             })
 
